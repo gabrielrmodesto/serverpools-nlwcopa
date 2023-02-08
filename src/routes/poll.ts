@@ -3,7 +3,7 @@ import ShortUniqueId from "short-unique-id";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 
-export async function pollRoutes(fastify : FastifyInstance){
+export async function pollRoutes(fastify: FastifyInstance) {
 	fastify.get('/pools/count', async () => {
 		const count = await prisma.pool.count();
 
@@ -20,12 +20,31 @@ export async function pollRoutes(fastify : FastifyInstance){
 		const generate = new ShortUniqueId({ length: 6 });
 		const code = String(generate()).toUpperCase();
 
-		await prisma.pool.create({
-			data: {
-				title,
-				code
-			}
-		})
+		try {
+			await request.jwtVerify();
+
+			await prisma.pool.create({
+				data: {
+					title,
+					code,
+					ownerId: request.user.sub,
+
+					participants: {
+						create: {
+							userId: request.user.sub,
+						}
+					}
+				}
+			})
+
+		} catch {
+			await prisma.pool.create({
+				data: {
+					title,
+					code
+				}
+			})
+		}
 
 		return reply.status(201).send({ code });
 	});
