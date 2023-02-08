@@ -50,7 +50,7 @@ export async function pollRoutes(fastify: FastifyInstance) {
 		return reply.status(201).send({ code });
 	});
 
-	fastify.post('/pools/:id/join',
+	fastify.post('/pools/join',
 	{
 		onRequest: [authenticate]
 	},
@@ -119,6 +119,50 @@ export async function pollRoutes(fastify: FastifyInstance) {
 						userId: request.user.sub
 					}
 				}
+			},
+			include: {
+				_count: {
+					select: {
+						participants: true,
+					}
+				},
+				participants: {
+					select: {
+						id: true,
+						user: {
+							select: {
+								avatarUrl: true,
+							}
+						}
+					},
+					take: 4
+				},
+				owner: {
+					select: {
+						id: true,
+						name: true,
+					}
+				}
+			}
+		});
+
+		return { pools };
+	})
+
+	fastify.get('/pools/:id',
+	{
+		onRequest: [authenticate]
+	},
+	async (request) => {
+		const getPoolsParams = z.object({
+			id: z.string(),
+		});
+
+		const { id } = getPoolsParams.parse(request.params);
+
+		const pools = await prisma.pool.findUnique({
+			where: {
+				id,
 			},
 			include: {
 				_count: {
